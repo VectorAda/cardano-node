@@ -24,6 +24,7 @@ module Cardano.Api (
 
     -- ** Shelley-based eras
     ShelleyBasedEra(..),
+    anyCardanoEraShelleyBased,
     IsShelleyBasedEra(..),
     InAnyShelleyBasedEra(..),
     CardanoEraStyle(..),
@@ -283,7 +284,7 @@ module Cardano.Api (
     SimpleScriptV2,
     ScriptLanguage(..),
     SimpleScriptVersion(..),
-    PlutusScriptVersion,
+    PlutusScriptVersion(..),
     AnyScriptLanguage(..),
     IsScriptLanguage(..),
     IsSimpleScriptLanguage(..),
@@ -466,6 +467,8 @@ module Cardano.Api (
     -- * Protocol parameter updates
     UpdateProposal(..),
     ProtocolParametersUpdate(..),
+    ProtocolParametersError(..),
+    renderProtocolParamsErr,
     makeShelleyUpdateProposal,
     PraosNonce,
     makePraosNonce,
