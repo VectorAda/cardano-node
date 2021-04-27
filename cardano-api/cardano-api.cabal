@@ -99,6 +99,7 @@ library
                       , cardano-crypto-class
                       , cardano-crypto-wrapper
                       , cardano-ledger-byron
+                      , cardano-ledger-core
                       , cardano-ledger-shelley-ma
                       , cardano-prelude
                       , cardano-slotting
@@ -124,6 +125,7 @@ library
                       , shelley-spec-ledger
                       , small-steps
                       , stm
+                      , strict-containers
                       , text
                       , time
                       , transformers
@@ -148,6 +150,7 @@ test-suite cardano-api-test
                       , cardano-crypto-test
                       , cardano-crypto-tests
                       , cardano-ledger-byron-test
+                      , cardano-ledger-core
                       , cardano-prelude
                       , cardano-slotting
                       , containers

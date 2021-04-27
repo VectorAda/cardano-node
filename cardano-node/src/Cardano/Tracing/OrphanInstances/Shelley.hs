@@ -584,7 +584,6 @@ instance ToObject (PoolPredicateFailure era) where
              , "error" .= String "The stake pool cost is too low"
              ]
 
-
 -- Apparently this should never happen according to the Shelley exec spec
   toObject _verb (WrongCertificateTypePOOL index) =
     case index of
@@ -602,6 +601,13 @@ instance ToObject (PoolPredicateFailure era) where
                     , "error" .= String "Wrong certificate type: Unknown certificate type"
                     ]
 
+  toObject _verb (WrongNetworkPOOL networkId listedNetworkId poolId) =
+    mkObject [ "kind" .= String "WrongNetworkPOOL"
+             , "networkId" .= String (textShow networkId)
+             , "listedNetworkId" .= String (textShow listedNetworkId)
+             , "poolId" .= String (textShow poolId)
+             , "error" .= String "Wrong network ID in pool registration certificate"
+             ]
 
 instance ( ToObject (PredicateFailure (Core.EraRule "NEWEPOCH" era))
          , ToObject (PredicateFailure (Core.EraRule "RUPD" era))
