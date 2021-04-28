@@ -247,6 +247,7 @@ instance ( ShelleyBasedEra era
          , ToObject (PredicateFailure (UTXO era))
          , ToObject (PredicateFailure (UTXOW era))
          , ToObject (PredicateFailure (Core.EraRule "LEDGER" era))
+         , ToObject (PredicateFailure (Core.EraRule "LEDGERS" era))
          ) => ToObject (BbodyPredicateFailure era) where
   toObject _verb (WrongBlockBodySizeBBODY actualBodySz claimedBodySz) =
     mkObject [ "kind" .= String "WrongBlockBodySizeBBODY"
@@ -283,13 +284,13 @@ instance ( ShelleyBasedEra era
          , ToObject (PredicateFailure (UTXO era))
          , ToObject (PredicateFailure (Core.EraRule "UTXO" era))
          ) => ToObject (UtxowPredicateFailure era) where
-  toObject _verb (InvalidWitnessesUTXOW wits) =
+  toObject _verb (InvalidWitnessesUTXOW wits') =
     mkObject [ "kind" .= String "InvalidWitnessesUTXOW"
-             , "invalidWitnesses" .= map textShow wits
+             , "invalidWitnesses" .= map textShow wits'
              ]
-  toObject _verb (MissingVKeyWitnessesUTXOW (WitHashes wits)) =
+  toObject _verb (MissingVKeyWitnessesUTXOW (WitHashes wits')) =
     mkObject [ "kind" .= String "MissingVKeyWitnessesUTXOW"
-             , "missingWitnesses" .= wits
+             , "missingWitnesses" .= wits'
              ]
   toObject _verb (MissingScriptWitnessesUTXOW missingScripts) =
     mkObject [ "kind" .= String "MissingScriptWitnessesUTXOW"
