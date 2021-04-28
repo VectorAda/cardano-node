@@ -5,10 +5,8 @@ usage_profile() {
     compose NAME..        Create a profile composed from named profiles
     get NAME              Get contents of named profile
     describe NAME         Print a human description of a profile
-    node-specs PROFILE-JSON PORT-BASE STAGGER-PORTS
-                          Print node specs JSON for the given profile;
-                            If STAGGER-PORTS is true, the assigned ports will
-                            be incrementally distinc for each node spec
+    node-specs PROFILE-JSON ENV-JSON
+                          Print node specs JSON for the given profile and environment
 EOF
 }
 
@@ -84,15 +82,13 @@ case "${op}" in
           ' --raw-output);;
 
     node-specs )
-        local usage="USAGE: wb profile node-specs PROFILE-JSON PORT-BASE STAGGER-PORTS"
+        local usage="USAGE: wb profile node-specs PROFILE-JSON ENV-JSON"
         local profile_json=${1:?$usage}
-        local port_base=${2:?$usage}
-        local stagger_ports=${3:?$usage}
+        local env_json=${2:?$usage}
 
         args=(
             "$profile_json"
-            --argjson port_base     $port_base
-            --argjson stagger_ports $stagger_ports
+            --slurpfile env "$env_json"
         )
         jq '. as $prof
            | $prof.composition.n_bft_hosts  as $n_bfts
@@ -121,9 +117,9 @@ case "${op}" in
                     { name:       "node-\(.["i"])"
                     , isProducer: ([.kind == "bft", .kind == "pool"] | any)
                     , port:
-                      (if $stagger_ports
-                       then $port_base + .i
-                       else $port_base
+                      (if $env[0].stagger_ports
+                       then $env[0].port_base + .i
+                       else $env[0].port_base
                        end)
                     }))
            | map({ key: .name, value: .})

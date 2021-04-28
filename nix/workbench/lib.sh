@@ -4,10 +4,19 @@ to_jsonlist() {
     done | jq --slurp '.'
 }
 
+jq_tolist() {
+    local exp=$1; shift
+    jq "$exp | join (\" \")" --raw-output "$@"
+}
+
 jq_fmutate() {
     local f=$1; shift
     test -f "$f" || { echo '{}' > "$f"; }
     jq "$@" "$f" | sponge "$f"
+}
+
+jq_check_json() {
+    jq '.' "$1" >/dev/null
 }
 
 __usage() {

@@ -16,16 +16,14 @@ in
 , enableEKG             ? true
 ##
 , profileName           ? profileNameDefault
+, batchName             ? "plain"
 , ...
 }:
 with lib;
 let
   backend =
     rec
-    { ## First, generic items:
-      inherit basePort;
-      staggerPorts = true;
-
+    { ## Generic Nix bits:
       topologyForNode =
         { profile, nodeSpec }:
         let inherit (nodeSpec) name i; in
@@ -63,7 +61,7 @@ let
             ];
           });
 
-      ## Backend-specific:
+      ## Backend-specific Nix bits:
       supervisord =
         {
           inherit
@@ -82,54 +80,6 @@ let
                 extraSupervisorConfig;
             };
         };
-
-      ## Actions:
-      deploy =
-        profile:
-        ''
-        cat <<EOF
-workbench:  starting cluster:
-  - state dir:       ${stateDir}
-  - profile JSON:    ${profile.JSON}
-  - node specs:      ${profile.node-specs.JSON}
-  - topology:        ${profile.topology.files}/topology-nixops.json ${profile.topology.files}/topology.pdf
-  - node port base:  ${toString basePort}
-  - EKG URLs:        http://localhost:${toString (basePort + supervisord.portShiftEkg)}/
-  - Prometheus URLs: http://localhost:${toString (basePort + supervisord.portShiftPrometheus)}/metrics
-
-EOF
-
-        ${__concatStringsSep "\n"
-          (flip mapAttrsToList profile.node-services
-            (name: svc:
-              ''
-              mkdir -p ${stateDir}/${name}
-              cp ${svc.nodeSpec.JSON}      ${stateDir}/${name}/spec.json
-              cp ${svc.serviceConfig.JSON} ${stateDir}/${name}/service-config.json
-              cp ${svc.nodeConfig.JSON}    ${stateDir}/${name}/config.json
-              cp ${svc.topology.JSON}      ${stateDir}/${name}/topology.json
-              cp ${svc.startupScript}      ${stateDir}/${name}/start.sh
-              ''
-            ))}
-
-        SUPERVISOR_CONF=${supervisord.mkSupervisorConf profile}
-        cp $SUPERVISOR_CONF ${stateDir}/supervisor/supervisord.conf
-        ${pkgs.python3Packages.supervisor}/bin/supervisord \
-            --config $SUPERVISOR_CONF $@
-        '';
-
-      activate =
-        profile:
-        ''
-        if test ! -v CARDANO_NODE_SOCKET_PATH
-        then export  CARDANO_NODE_SOCKET_PATH=$(wb local get-node-socket-path ${stateDir})
-        fi
-
-        wb local wait-for-node-socket
-        wb local record-node-pids     "${stateDir}"
-
-        echo 'workbench:  cluster started. Run `stop-cluster` to stop'
-        '';
     };
 
   environment =
@@ -161,38 +111,64 @@ let
   start = pkgs.writeScriptBin "start-cluster" ''
     set -euo pipefail
 
-    PATH=$PATH:${path}
+    export PATH=$PATH:${path}
+    export WORKBENCH_BACKEND=${../workbench}/supervisor.sh
 
-    batch_name=plain
+    wb backend assert-is supervisor
+
+    wb backend assert-stopped
+
+    batch_name=${batchName}
 
     while test $# -gt 0
     do case "$1" in
         --batch-name ) batch_name=$2; shift;;
         --trace | --debug ) set -x;;
-        --trace-wb | --trace-workbench ) export workbench_extra_flags=--trace;;
+        --trace-wb | --trace-workbench ) export WORKBENCH_EXTRA_FLAGS=--trace;;
         * ) break;; esac; shift; done
 
     workbench-prebuild-executables
-
-    wb local assert-stopped
 
     if test -e "${stateDir}" -a ! -L "${stateDir}"
     then echo "workbench ERROR:  state directory exists, but is not a symlink -- please remove it or choose another:  ${stateDir}"; exit 1; fi
 
     allocate_args=(
-        --cachedir "${cacheDir}"
-        --
+        --cachedir      "${cacheDir}"
+        --base-port      ${basePort}
+        --stagger-ports
+        --port-shift-ekg        100
+        --port-shift-prometheus 200
       )
-
-    wb run "''${allocate_args[@]}" allocate $batch_name ${profile.name}
+    wb run allocate $batch_name ${profile.name} "''${allocate_args[@]}"
 
     ln -sf "$(wb run current-path)" "${stateDir}"
     mkdir -p                        "${stateDir}"/supervisor
 
+    ${__concatStringsSep "\n"
+      (flip mapAttrsToList profile.node-services
+        (name: svc:
+          ''
+          cp ${svc.serviceConfig.JSON} ${stateDir}/${name}/service-config.json
+          cp ${svc.nodeConfig.JSON}    ${stateDir}/${name}/config.json
+          cp ${svc.topology.JSON}      ${stateDir}/${name}/topology.json
+          cp ${svc.startupScript}      ${stateDir}/${name}/start.sh
+          ''
+        ))}
+
+    SUPERVISOR_CONF=${supervisord.mkSupervisorConf profile}
+    cp $SUPERVISOR_CONF ${stateDir}/supervisor/supervisord.conf
+    ${pkgs.python3Packages.supervisor}/bin/supervisord \
+        --config $SUPERVISOR_CONF $@
+    if test ! -v CARDANO_NODE_SOCKET_PATH
+    then export  CARDANO_NODE_SOCKET_PATH=$(wb local get-node-socket-path ${stateDir})
+    fi
+
     wb run start $(wb run current-name)
 
-    ${backend.deploy   profile}
-    ${backend.activate profile}
+    wb backend wait-for-local-node-socket
+    wb supervisor record-node-pids     "${stateDir}"
+
+    echo 'workbench:  cluster started. Run `stop-cluster` to stop'
   '';
   stop = pkgs.writeScriptBin "stop-cluster" ''
     set -euo pipefail

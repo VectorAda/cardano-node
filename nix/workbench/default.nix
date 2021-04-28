@@ -83,14 +83,14 @@ let
     ''
     echo 'workbench:  dev mode enabled, calling wb directly from checkout (instead of using Nix store)' >&2
 
-    workbench_cardano_node_repo_root=$(git rev-parse --show-toplevel)
-    workbench_extra_flags=
+    WORKBENCH_CARDANO_NODE_REPO_ROOT=$(git rev-parse --show-toplevel)
+    WORKBENCH_EXTRA_FLAGS=
 
     function wb() {
-      $workbench_cardano_node_repo_root/nix/workbench/wb --set-mode ${checkoutWbMode} $workbench_extra_flags "$@"
+      $WORKBENCH_CARDANO_NODE_REPO_ROOT/nix/workbench/wb --set-mode ${checkoutWbMode} $WORKBENCH_EXTRA_FLAGS "$@"
     }
 
-    export workbench_cardano_node_repo_root workbench_extra_flags
+    export WORKBENCH_CARDANO_NODE_REPO_ROOT WORKBENCH_EXTRA_FLAGS
     export -f wb
 
     ''}
